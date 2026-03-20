@@ -1,0 +1,110 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export default function SignupPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      // Create profile
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: data.user.id,
+        name,
+        gross_income: 0,
+        epf_rate: 11,
+      });
+
+      if (profileError) {
+        setError(profileError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
+    router.refresh();
+  }
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6">
+      <div className="w-full space-y-8">
+        <div>
+          <h1 className="text-5xl font-black tracking-tight">Bajet</h1>
+          <p className="mt-2 text-muted-foreground">Create your account</p>
+        </div>
+
+        <form onSubmit={handleSignup} className="space-y-4">
+          <Input
+            type="text"
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="h-12 bg-surface-card"
+          />
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-12 bg-surface-card"
+          />
+          <Input
+            type="password"
+            placeholder="Password (min 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className="h-12 bg-surface-card"
+          />
+
+          {error && (
+            <p className="text-sm text-accent-red">{error}</p>
+          )}
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-12 w-full text-base font-semibold"
+          >
+            {loading ? "Creating account..." : "Sign Up"}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <a href="/auth/login" className="text-foreground font-medium">
+            Sign in
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
